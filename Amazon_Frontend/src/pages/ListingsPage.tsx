@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Upload, X, RefreshCw, AlertCircle, Camera, Type, Tag, DollarSign } from 'lucide-react';
-import type { SocialPost } from '../../../../New Amazon Frontend/src/types';
+import { Link, Upload, Search, AlertCircle, RefreshCw } from 'lucide-react';
+import { toast, Toaster } from 'react-hot-toast';
 
 interface PreviewData {
   title: string;
@@ -12,48 +12,21 @@ interface PreviewData {
 
 export default function ConvertPost() {
   const [step, setStep] = useState<'upload' | 'preview' | 'processing'>('upload');
-  const [dragActive, setDragActive] = useState(false);
-  const [previewData, setPreviewData] = useState<PreviewData | null>(null);
+  const [url, setUrl] = useState('');
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [url, setUrl] = useState(''); // Input for the Instagram URL
-  const [loading, setLoading] = useState(false); // Loading state
+  const [previewData, setPreviewData] = useState<PreviewData | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(e.type === 'dragenter' || e.type === 'dragover');
-  };
-
-  const handleDrop = async (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragActive(false);
-    setError(null);
-    setStep('processing');
-    await fetchData(url); // Call the API to fetch data
-  };
-
-  const handleFileSelect = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.multiple = true;
-    input.onchange = (e) => {
-      const files = (e.target as HTMLInputElement).files;
-      if (files?.length) {
-        handleDrop({ preventDefault: () => {} } as React.DragEvent<HTMLDivElement>);
-      }
-    };
-    input.click();
-  };
-
-  const fetchData = async (url: string) => {
+  const fetchData = async () => {
     if (!url) {
       setError('Please provide a valid Instagram URL.');
-      setStep('upload');
       return;
     }
 
     setLoading(true);
+    setError(null);
+    setStep('processing');
 
     try {
       const response = await fetch('http://127.0.0.1:8000/generate_amazon_listing/', {
@@ -88,35 +61,28 @@ export default function ConvertPost() {
   };
 
   const renderUploadStep = () => (
-    <div
-      className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
-        dragActive ? 'border-indigo-600 bg-purple-50' : 'border-gray-300'
-      }`}
-      onDragEnter={handleDrag}
-      onDragLeave={handleDrag}
-      onDragOver={handleDrag}
-      onDrop={handleDrop}
-    >
-      <Upload className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-      <h3 className="text-xl font-semibold mb-2">Enter the Instagram Post URL</h3>
-      <input
-        type="text"
-        placeholder="Paste Instagram Post URL here"
-        value={url}
-        onChange={(e) => setUrl(e.target.value)}
-        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-      />
-      <button
-        onClick={() => fetchData(url)}
-        disabled={loading}
-        className={`mt-4 px-6 py-3 rounded-lg text-white font-semibold ${
-          loading ? 'bg-gray-400' : 'bg-indigo-600 hover:bg-indigo-700'
-        }`}
-      >
-        {loading ? 'Processing...' : 'Convert Post'}
-      </button>
+    <div className="space-y-4">
+      <p className="text-gray-600">Enter the URL of your social media post:</p>
+      <div className="flex gap-4">
+        <input
+          type="url"
+          placeholder="https://instagram.com/p/..."
+          className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+        />
+        <button
+          onClick={fetchData}
+          disabled={loading}
+          className={`btn-primary whitespace-nowrap ${
+            loading ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
+        >
+          {loading ? 'Analyzing...' : 'Analyze URL'}
+        </button>
+      </div>
       {error && (
-        <div className="mt-4 flex items-center justify-center text-red-500">
+        <div className="flex items-center text-red-500 mt-2">
           <AlertCircle className="h-5 w-5 mr-2" />
           <span>{error}</span>
         </div>
@@ -137,68 +103,56 @@ export default function ConvertPost() {
 
     return (
       <div className="space-y-8">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="bg-white rounded-xl p-6">
           <h3 className="text-xl font-semibold mb-6">Preview Amazon Listing</h3>
 
           <div className="space-y-6">
             {/* Product Images */}
-            <div className="flex items-start space-x-4">
-              <Camera className="h-5 w-5 text-gray-400 mt-1" />
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Product Images</label>
-                <div className="flex space-x-4">
-                  {previewData.images.map((img, idx) => (
-                    <img
-                      key={idx}
-                      src={img}
-                      alt={`Product ${idx + 1}`}
-                      className="h-24 w-24 object-cover rounded-lg border border-gray-200"
-                    />
-                  ))}
-                </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Product Images</label>
+              <div className="flex space-x-4">
+                {previewData.images.map((img, idx) => (
+                  <img
+                    key={idx}
+                    src={img}
+                    alt={`Product ${idx + 1}`}
+                    className="h-24 w-24 object-cover rounded-lg border border-gray-200"
+                  />
+                ))}
               </div>
             </div>
 
             {/* Product Title */}
-            <div className="flex items-start space-x-4">
-              <Type className="h-5 w-5 text-gray-400 mt-1" />
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Product Title</label>
-                <input
-                  type="text"
-                  value={previewData.title}
-                  onChange={(e) => setPreviewData({ ...previewData, title: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Product Title</label>
+              <input
+                type="text"
+                value={previewData.title}
+                onChange={(e) => setPreviewData({ ...previewData, title: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              />
             </div>
 
             {/* Product Category */}
-            <div className="flex items-start space-x-4">
-              <Tag className="h-5 w-5 text-gray-400 mt-1" />
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                <input
-                  type="text"
-                  value={previewData.category}
-                  onChange={(e) => setPreviewData({ ...previewData, category: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+              <input
+                type="text"
+                value={previewData.category}
+                onChange={(e) => setPreviewData({ ...previewData, category: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              />
             </div>
 
             {/* Product Description */}
-            <div className="flex items-start space-x-4">
-              <Type className="h-5 w-5 text-gray-400 mt-1" />
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                <textarea
-                  value={previewData.description}
-                  onChange={(e) => setPreviewData({ ...previewData, description: e.target.value })}
-                  rows={4}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+              <textarea
+                value={previewData.description}
+                onChange={(e) => setPreviewData({ ...previewData, description: e.target.value })}
+                rows={4}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              />
             </div>
           </div>
 
@@ -227,14 +181,28 @@ export default function ConvertPost() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-        <h2 className="text-2xl font-semibold mb-8">Convert Social Media Post</h2>
-        
-        {step === 'upload' && renderUploadStep()}
-        {step === 'processing' && renderProcessingStep()}
-        {step === 'preview' && renderPreviewStep()}
+    <>
+      <Toaster position="top-right" />
+      <div className="max-w-4xl mx-auto p-6 bg-white rounded-2xl shadow-lg">
+        <div className="mb-8">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+            <input
+              type="text"
+              placeholder="Search your posts or paste URL..."
+              className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="mt-8">
+          {step === 'upload' && renderUploadStep()}
+          {step === 'processing' && renderProcessingStep()}
+          {step === 'preview' && renderPreviewStep()}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
